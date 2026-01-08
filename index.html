@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Naval's Wisdom (Expanded)</title>
+    <title>Naval's Wisdom (Interactive)</title>
     <style>
         body {
             font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-            /* 背景：更深邃的黑洞风格 */
+            /* 背景：深邃黑洞风格 */
             background: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?ixlib=rb-4.0.3&auto=format&fit=crop&w=2013&q=80');
             background-size: cover;
             background-position: center;
@@ -18,6 +18,7 @@
             min-height: 100vh;
             margin: 0;
             color: #e0e0e0;
+            overflow: hidden; /* 防止手机端滑动出现白边 */
         }
 
         .card {
@@ -27,12 +28,12 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             padding: 40px 50px;
             border-radius: 16px;
-            box-shadow: 0 25px 80px rgba(0,0,0,0.9);
+            box-shadow: 0 30px 90px rgba(0,0,0,0.9);
             max-width: 650px;
             width: 90%;
             text-align: left;
             position: relative;
-            transition: all 0.5s ease;
+            transition: transform 0.3s ease, opacity 0.3s ease;
         }
 
         /* 顶部进度条装饰 */
@@ -41,8 +42,9 @@
             top: 0; left: 0;
             height: 3px;
             background: linear-gradient(90deg, #b8860b, #ffd700);
-            width: 100%; /* 也可以用 JS 控制长度 */
+            width: 100%; 
             border-radius: 16px 16px 0 0;
+            opacity: 0.7;
         }
 
         .meta-info {
@@ -79,6 +81,7 @@
             color: #f0f0f0;
             font-weight: 500;
             letter-spacing: 0.5px;
+            min-height: 80px; /* 预留高度防止跳动 */
         }
 
         .quote-en {
@@ -88,31 +91,79 @@
             color: #888;
             font-style: italic;
             margin-bottom: 0;
+            min-height: 60px;
+        }
+
+        .footer-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 40px;
         }
 
         .author {
-            margin-top: 35px;
-            text-align: right;
             font-size: 0.85em;
             color: #555;
             letter-spacing: 2px;
             text-transform: uppercase;
         }
+
+        /* 按钮组样式 */
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #888;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: #d4af37;
+            color: #d4af37;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        /* 手机适配 */
+        @media (max-width: 600px) {
+            .card { padding: 30px; }
+            h1 { font-size: 1.3em; }
+            .footer-row { flex-direction: column; gap: 20px; align-items: flex-end; }
+            .nav-buttons { width: 100%; justify-content: space-between; }
+        }
     </style>
 </head>
 <body>
 
-<div class="card">
+<div class="card" id="main-card">
     <div class="progress-bar"></div>
     <div class="meta-info">
-        <span class="time-badge" id="clock">...</span>
+        <span class="time-badge" id="card-index">...</span>
         <span class="topic-tag" id="category">...</span>
     </div>
     
     <h1 id="cn-text">载入智慧中...</h1>
     <p class="quote-en" id="en-text">Loading...</p>
 
-    <div class="author">Naval Ravikant</div>
+    <div class="footer-row">
+        <div class="nav-buttons">
+            <button onclick="prevCard()">← PREV</button>
+            <button onclick="nextCard()">NEXT →</button>
+        </div>
+        <div class="author">Naval Ravikant</div>
+    </div>
 </div>
 
 <script>
@@ -178,29 +229,78 @@
         { tag: "Kindness", cn: "善良不是软弱，而是一种选择。", en: "Kindness is a choice." }
     ];
 
-    function updateContent() {
+    // 全局索引变量
+    let currentIndex = 0;
+    const cardElement = document.getElementById('main-card');
+
+    // 1. 初始化：计算今天的“默认金句”
+    function init() {
         const now = new Date();
         const hour = now.getHours();
-        const date = now.getDate(); // 获取今天是几号 (1-31)
+        const date = now.getDate();
         
-        // --- 核心升级算法 ---
-        // 我们不只是用小时 (0-23) 来取内容，因为那样只有 24 条不够用。
-        // 我们用 (日期 + 小时) 的总和，去“余”上总条数。
-        // 这样每天的同一个时间点，索引值都会变，实现了“每天轮播”。
+        // 算法：(日期+小时) % 总数，保证每天每小时都不一样
         const seed = date + hour; 
-        const index = seed % navalLibrary.length; // 确保不会超出数组范围
+        currentIndex = seed % navalLibrary.length;
         
-        const content = navalLibrary[index];
-        
-        // 更新页面
-        document.getElementById('clock').innerText = `${hour}:00 NOW`;
-        document.getElementById('category').innerText = content.tag;
-        document.getElementById('cn-text').innerText = content.cn;
-        document.getElementById('en-text').innerText = content.en;
+        render(false); // false 表示不需要淡入动画，直接显示
     }
 
-    // 立即执行
-    updateContent();
+    // 2. 渲染函数：把内容放到屏幕上
+    function render(animate = true) {
+        // 如果需要动画，先让卡片隐身
+        if (animate) {
+            cardElement.style.opacity = 0;
+            cardElement.style.transform = "translateY(5px)";
+        }
+
+        setTimeout(() => {
+            const content = navalLibrary[currentIndex];
+            
+            // 更新文字
+            // 显示当前卡片编号 (e.g. #05 / 50) 让用户知道位置
+            const displayIndex = (currentIndex + 1).toString().padStart(2, '0');
+            document.getElementById('card-index').innerText = `# ${displayIndex} / ${navalLibrary.length}`;
+            document.getElementById('category').innerText = content.tag;
+            document.getElementById('cn-text').innerText = content.cn;
+            document.getElementById('en-text').innerText = content.en;
+
+            // 恢复显示
+            if (animate) {
+                cardElement.style.opacity = 1;
+                cardElement.style.transform = "translateY(0)";
+            }
+        }, animate ? 200 : 0);
+    }
+
+    // 3. 下一张
+    function nextCard() {
+        currentIndex++;
+        // 如果到了最后一张，循环回到第一张
+        if (currentIndex >= navalLibrary.length) {
+            currentIndex = 0;
+        }
+        render(true);
+    }
+
+    // 4. 上一张
+    function prevCard() {
+        currentIndex--;
+        // 如果到了第一张之前，循环回到最后一张
+        if (currentIndex < 0) {
+            currentIndex = navalLibrary.length - 1;
+        }
+        render(true);
+    }
+
+    // 键盘左右键支持
+    document.addEventListener('keydown', function(event) {
+        if (event.key === "ArrowRight") nextCard();
+        if (event.key === "ArrowLeft") prevCard();
+    });
+
+    // 启动！
+    init();
 </script>
 
 </body>
